@@ -11,10 +11,7 @@
 #include <sys/ipc.h>	// for semaphore sys V operations
 #include <sys/sem.h>
 
-
 #define BUFF 64
-
-
 
 union semun {		// to link both semaphores
     int val;
@@ -34,12 +31,11 @@ int main(int argc, char **argv)
     char *lists[20];
 
     // while loop for the shell command 
-
     while(1)
     {
-        if(loops == 0){
+        if(loops == 0)
+        {
             system("clear"); //clear screen 
-        
         }
         char* userName = getenv("USER"); 
         printf("%s@shell ~> ", userName); 
@@ -65,8 +61,6 @@ int main(int argc, char **argv)
 */
 void exitingShell(char **history, int len ){
 
-    //printf("DAD PID: %d\n", getpid()); 
-
     int status; 
     pid_t pid;
     int ret; 
@@ -90,9 +84,7 @@ void exitingShell(char **history, int len ){
                 printf("   %s \n", history[i]); 
         }
         puts("\n"); 
-        
-
-        
+           
         // code for child 1
         
     }else if(pid < 0)
@@ -136,9 +128,10 @@ void exitingShell(char **history, int len ){
     exit(0);  
 }
 
+/*  atExit will exit out the project when Enter is clicked, also the ... process.
+*/
 void atExit()
 {
-   
     char ch; 
     ch = fgetc(stdin); 
 
@@ -151,12 +144,10 @@ void atExit()
             fflush(stdout);
         }
         printf("\n\n");
-        
-
     }
 }
 
-
+// get commands from the shell 
 void getUserIn(char *userIn)
 {
     fgets(userIn, BUFF, stdin); 
@@ -167,7 +158,7 @@ void getUserIn(char *userIn)
         userIn[len] = '\0';
 }
 
-
+// semaphore is on 
 int SEM_ON(int sem_id, int sem_val)
 {
     union semun sem_union; 
@@ -175,7 +166,7 @@ int SEM_ON(int sem_id, int sem_val)
     return semctl(sem_id, 0, SETVAL, sem_union); 
 }
 
-// semmaphore delete 
+// semaphore delete 
 int SEM_OFF(int sem_id)
 {
     return semctl(sem_id, 0, IPC_RMID); 
@@ -191,8 +182,7 @@ int P(int sem_id)
     return semop(sem_id, &sem_buf, 1); 
 }
 
-// increment semaphore
-
+// signal
 int V(int sem_id)
 {
     struct sembuf sem_buf; 
