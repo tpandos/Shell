@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <string.h>
+//#include <string.h>
 #include <dirent.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -16,7 +16,7 @@
 #define KEY1 1100	// semaphore keys
 #define KEY2 1111
 
-union semun {		// to link both semaphores
+union semun {		// union semaphore sets 
     int val;
     struct semid_ds *buf;
     unsigned short  *array;
