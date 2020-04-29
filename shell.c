@@ -302,7 +302,7 @@ void executeTree()
 		}
 		else
 		{
-		//Parent Process. Fork off one more child process.
+		/*//Parent Process. Fork off one more child process.
 			if ((pid = fork()) == -1) 
 			{
 				//fork failed!
@@ -318,7 +318,7 @@ void executeTree()
                 V(sem2);  
 			}
 			else
-			{
+			{*/
 				//Now parent process waits for the child processes to finish
 				pid = wait(&status);
 				printf("Process(pid = %d) exited with the status %d. \n", pid, status);
@@ -330,12 +330,12 @@ void executeTree()
 			
                 SEM_OFF(sem1); 
 
-				pid = wait(&status);
-				printf("Process(pid = %d) exited with the status %d. \n", pid, status);
+				//pid = wait(&status);
+				//printf("Process(pid = %d) exited with the status %d. \n", pid, status);
 			}
 			exit(0);
 		}
 		exit(0);
-	}
-	exit(0);    
+	//}
+	//exit(0);    
 }
