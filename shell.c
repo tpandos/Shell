@@ -12,6 +12,9 @@
 #include <sys/sem.h>
 
 #define BUFF 64
+//--------------------------------------------------------------------------------------
+#define KEY1 1100	// semaphore keys
+#define KEY2 1111
 
 union semun {		// to link both semaphores
     int val;
@@ -19,6 +22,9 @@ union semun {		// to link both semaphores
     unsigned short  *array;
 };
 
+int sem1, sem2;				// my semaphore sets
+//--------------------------------------------------------------------------------------
+FILE *fp1, *fp2, *fp3;
 void atExit();
 void exitingShell(char **history, int len);
 void getUserIn(char *userIn);
@@ -26,10 +32,10 @@ void executeTree();
 
 int main(int argc, char **argv)
 {
+
     char userIn[BUFF]; 
     int loops = 0;  
     char *lists[20];
-
     // while loop for the shell command 
     while(1)
     {
@@ -52,7 +58,6 @@ int main(int argc, char **argv)
     
     return 0; 
 }
-
 
 /* exitingShell()*
   -> prints a list of the last 4 commands of the terminal
@@ -83,10 +88,8 @@ void exitingShell(char **history, int len ){
             for(int i = (len-4); i < len; i++) 
                 printf("   %s \n", history[i]); 
         }
-        puts("\n"); 
-           
+        puts("\n");  
         // code for child 1
-        
     }else if(pid < 0)
     {
         perror("ERROR creating mgmt1 process fail."); 
@@ -197,10 +200,29 @@ tree*: this new command will create a directory and call it Dir0. Then it will c
 directory to Dir0, and create three empty text files namely; t1.txt, t2.txt,and t3.txt, and one empty
 directory , called Dir1,inside it.
 */
-void executeTree(){   
+void executeTree()
+{   
+    sem1 = semget(KEY1, 1, IPC_CREAT | 0666); 
+    if(sem1 < 0)
+    {
+        perror("ERROR: semget sem1\n"); 
+        exit(EXIT_FAILURE); 
+    }
+
+    sem2 = semget(KEY2, 1, IPC_CREAT | 0666); 
+    if(sem2 < 0)
+    {
+        perror("ERROR: segmet sem2\n");
+        exit(EXIT_FAILURE); 
+    }
+   
+	SEM_ON(sem1,1); // sem1 initial value 1
+    SEM_ON(sem2,0); // sem2 initial value 0
+
     int status; 
     pid_t pid;
-    int ret;                        
+    int ret; 
+
 	if ((pid = fork()) == -1) 
 	{
 		//fork failed!
@@ -210,23 +232,21 @@ void executeTree(){
 	
 	if (pid == 0)
     {
-        //First Child Process. Dear old dad tries to do some upda
-
-    
+        // first child process create new directory Dir0 create 3 text files and one more folder  
         // printf("2 PPID: %d, PID: %d\n", getppid(), getpid());
-        
-        
-      
+        P(sem1);
         printf("one\n");
-       /*   char* prog1[] = { "mkdir", "Dir0", 0};
+          char* prog1[] = { "mkdir", "Dir0", 0};
                                  ret = execvp(prog1[0], prog1);    // executing ls -F 
                              if(ret == -1){
                                          perror("exec error prog 1"); 
                                          exit(0); 
                                 }
+
         
-        */
         
+        sleep(3); 
+        V(sem2); 
 	}                                                               
 	else
 	{
@@ -242,25 +262,43 @@ void executeTree(){
 			// child 2
             // changing the cwd to /tmp 
             //sleep(5);
-            
-    
-         printf("two\n"); 
+            P(sem2); 
+            printf("two\n"); 
 
-           if (chdir("/home/tardis/Dev/gitLocal/Shell/Test") != 0)  
-             perror("chdir() to /Dir0 failed"); 
+            if (chdir("/home/tardis/Documents/Operating_systems/Group_project/Shell/Dir0") != 0)  
+                perror("chdir() to /Dir0 failed"); 
 
-        
-          
-        
- char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("Current working dir: %s\n", cwd);
-    } else {
-        perror("getcwd() error");
-        exit(0); 
-    }
-    
-        
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) 
+            {
+                printf("Current working dir: %s\n", cwd);
+            } 
+            else 
+            {
+                perror("getcwd() error");
+                exit(0); 
+            }
+
+            fp1 = fopen("t1.txt","w");                                            
+	        fclose(fp1);
+	
+	//Initialize the number of attempts to be 20                           
+	        fp2 = fopen("t2.txt", "w");
+	        fclose(fp2);
+
+            fp3 = fopen("t3.txt","w");                                           
+	        fclose(fp3);
+
+            char* prog2[] = { "mkdir", "Dir1", 0};
+                            ret = execvp(prog2[0], prog2);    // executing ls -F 
+                             if(ret == -1){
+                                         perror("exec error prog 2"); 
+                                         exit(0); 
+                                }
+
+
+            sleep(3);
+            V(sem1); 
 		}
 		else
 		{
@@ -275,25 +313,25 @@ void executeTree(){
 			{
                 //printf("2 PPID: %d, PID: %d\n", getppid(), getpid());
 				//child 3
-            
-                 
-                printf("three\n"); 
-            
-                
+                P(sem1); 
+                printf("three\n");    
+                V(sem2);  
 			}
 			else
 			{
 				//Now parent process waits for the child processes to finish
 				pid = wait(&status);
 				printf("Process(pid = %d) exited with the status %d. \n", pid, status);
-			
+
+                SEM_OFF(sem2); 
+
 				pid = wait(&status);
 				printf("Process(pid = %d) exited with the status %d. \n", pid, status);
 			
+                SEM_OFF(sem1); 
+
 				pid = wait(&status);
 				printf("Process(pid = %d) exited with the status %d. \n", pid, status);
-               
-                
 			}
 			exit(0);
 		}
