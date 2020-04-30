@@ -12,9 +12,6 @@ exit* function
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/types.h>		//..
-#include <sys/ipc.h>		// for semaphores segmet(), semctl(), semop()
-#include <sys/sem.h>		//.. 
 #include <sys/stat.h> 
 #include <sys/wait.h>
 #include <linux/limits.h>
