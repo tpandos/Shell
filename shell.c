@@ -36,7 +36,6 @@ int main()
 	
     while(1)
     {
-        //printf("Dad Pid: %d\n",getpid()); 
         if(loops == 0)
         {
             system("clear");                //clear screen in the beginning 
@@ -81,7 +80,7 @@ void exitingShell(char **history, int len ){
     if(pid == 0)
     {
 //===============================================================CODE CHILD 1: keep track of last four commands 
-        //printf("1 PPID: %d, PID: %d\n", getppid(), getpid()); 
+        //printf("1 PPID: %d, PID: %d\n", getppid(), getpid());   // for testing
         if(len <= 4){                           // loop for keeping count of commands if <= 4
             printf("\nCommands used: \n\n"); 
             for(int i = 0; i < len; i++)
@@ -108,7 +107,7 @@ void exitingShell(char **history, int len ){
         { 
 //====================================================================== CODE CHILD 2: print ls - l to screen    
             sleep(2); 
-            //printf("2 PPID: %d, PID: %d\n", getppid(), getpid()); 
+            //printf("2 PPID: %d, PID: %d\n", getppid(), getpid()); // for testing
             char* prog1[] = { "ls", "-l",0};
             ret = execvp(prog1[0], prog1);                          // executing ls -F 
             if(ret == -1)
