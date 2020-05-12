@@ -1,85 +1,73 @@
 /****************************
-Task 5
+Group Project 
+Inna Baryanova
 Tamara Pando 
-Semaphores
+
+Shell function
+tree* function
+list* function
+exit* function 
 ****************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/types.h>		//..
-#include <sys/ipc.h>		// for semaphores segmet(), semctl(), semop()
-#include <sys/sem.h>		//.. 
 #include <sys/stat.h> 
 #include <sys/wait.h>
 #include <linux/limits.h>
+#include<fcntl.h>
 
 #define BUFF 64         // buffer 
-#define KEY1 1100
-#define KEY2 1111
-//**************************************
 
-
-int count = 0;      // union for semaphores 
-union semun {
-    int val;
-    struct semid_ds *buf;
-    unsigned short  *array;
-};
-
-int sem1, sem2;		// declaring semaphores 
-
-//************************************* functions used 
-int SEM_ON(int sem_id, int sem_val);
-int SEM_OFF(int sem_id);
-int P(int sem_id);
-int V(int sem_id);
-void getUserIn(char *userIn);
-void atExit();
-void exitingShell(char **history, int len);
-void treeCommand();
+void getUserIn(char *userIn);   // gets user input for choices 
+void atExit();                  // exits shell 
+void exitingShell(char **history, int len);     // execute commands when exiting 
+void treeCommand();                             // tree* command 
+void listCommand();                             // list* command 
+void changeDirectory();                         // change dircectory 
+void getCurrentDirectory();                     // get current directory 
 //*************************************************************
-
-// ******************************************************************************************************************MAIN 
+ 
 int main()
 {
-	int pid;						// Process ID after fork call
-	int status;						// Exit status of child process
-    int loops = 0; 
-    char userIn[BUFF];  
-    char *lists[20];
+    int loops = 0;          // just to clear screen at entering the shell 
+    char userIn[BUFF];      // user input 
+    char *lists[20];        // array of strings to store history of commands 
 	
-    
-        while(1)
+    while(1)
+    {
+        if(loops == 0)
         {
-            //printf("Dad Pid: %d\n",getpid()); 
-            if(loops == 0)
-            {
-            system("clear"); //clear screen 
-            }
+            system("clear");                //clear screen in the beginning 
+        }
 
-            char* userName = getenv("USER"); 
-            printf("%s@shell ~> ", userName); 
-            getUserIn(userIn); 
-            lists[loops] = strdup(userIn); 
+        char* userName = getenv("USER");        // show computer user in shell 
+        printf("%s@shell ~> ", userName); 
+        getUserIn(userIn); 
+        lists[loops] = strdup(userIn);          // populate commands array 
 
-            if(strcmp(userIn, "exit*") == 0) {
+        if(strcmp(userIn, "exit*") == 0)        // execute chosen commands 
+        {
             exitingShell(lists,loops);
             exit(0); 
-            }
-            else if(strcmp(userIn, "t") == 0){
-                treeCommand();   
-            }
-		
+        }
+        else if(strcmp(userIn, "tree*") == 0)
+        {
+            treeCommand();   
+        }
+        else if(strcmp(userIn, "list*") == 0)
+        {
+            listCommand(); 
+        }
 	    loops++; 
     }		  
 }
 
-
 /* exitingShell()*
-  -> prints a list of the last 4 commands of the terminal
+  -> prints a list of the last 4 commands of the terminal if 4 or more commands entered
+  -> prints a list of all commands entered if less than 4
   -> a detail list of the current directory like ls -l
-  -> wait for the user to hit return to return the control to the original shell 
+  -> wait for the user to hit Enter to return the control to bash window
 */
 //******************* EXITINGSHELL function *************************************************************************************************
 void exitingShell(char **history, int len ){
@@ -91,27 +79,23 @@ void exitingShell(char **history, int len ){
 
     if(pid == 0)
     {
-        //=====================================================CODE CHILD 1 
-        printf("1 PPID: %d, PID: %d\n", getppid(), getpid()); 
-        printf("\nPress ENTER to exit.\n"); 
-        
+//===============================================================CODE CHILD 1: keep track of last four commands 
+        //printf("1 PPID: %d, PID: %d\n", getppid(), getpid());   // for testing
         if(len <= 4){                           // loop for keeping count of commands if <= 4
-            printf("\nCommands used: \n"); 
+            printf("\nCommands used: \n\n"); 
             for(int i = 0; i < len; i++)
-                printf("   %s \n", history[i]); 
+                printf("   - %s \n", history[i]); 
             if(len == 0)
-            printf("exit* \n"); 
+                printf("exit* \n"); 
         }
         else{
-            printf("\nLast four commands used: \n");        // loop for printing last 4 commands
+            printf("\nLast four commands used: \n\n");        // loop for printing last 4 commands
             for(int i = (len-4); i < len; i++) 
-                printf("   %s \n", history[i]); 
+                printf("   - %s \n", history[i]); 
         }
         puts("\n");  
         exit(0); 
-
-        // =============================================== END CHILD 1 
-
+//=================================================================== END CHILD 1 
     }else if(pid < 0)
     {
         perror("Error creating child process\n"); 
@@ -120,9 +104,10 @@ void exitingShell(char **history, int len ){
     {
         pid = fork(); 
         if(pid == 0)
-        { //=========================================================== CODE CHILD 2    
-            printf("2 PPID: %d, PID: %d\n", getppid(), getpid()); 
-             
+        { 
+//====================================================================== CODE CHILD 2: print ls - l to screen    
+            sleep(2); 
+            //printf("2 PPID: %d, PID: %d\n", getppid(), getpid()); // for testing
             char* prog1[] = { "ls", "-l",0};
             ret = execvp(prog1[0], prog1);                          // executing ls -F 
             if(ret == -1)
@@ -130,31 +115,34 @@ void exitingShell(char **history, int len ){
                 perror("exec error prog 1"); 
                 exit(0); 
             }
-                //===================================================== END CHILD 2
+//==================================================================================== END CHILD 2
         }
         else if(pid < 0)
         {
             perror("Error creating child process\n"); 
             exit(EXIT_FAILURE);
-            }
-            else
-            {
-                atExit(); 
-                pid = wait(&status);
-				printf("Process(pid = %d) exited with the status %d. \n", pid, status);
+        }
+        else
+        {
+            pid = wait(&status);
+			//printf("Process(pid = %d) exited with the status %d. \n", pid, status);  //for testing
 			
-				pid = wait(&status);
-				printf("Process(pid = %d) exited with the status %d. \n", pid, status);  
-            }    
+			pid = wait(&status);
+			//printf("Process(pid = %d) exited with the status %d. \n", pid, status);  //for testing 
+        }    
     } 
-    
+    atExit();   
 }
 
-/*  atExit will exit out the project when Enter is clicked, also the ... process.
+
+/* atExit()
+    -> exit the shell when Enter is clicked
+    -> will print dot exiting 
 */
 //******************* ATEXIT function *************************************************************************************************
 void atExit()
 {
+    printf("\nPress ENTER to exit\n"); 
     char ch; 
     ch = fgetc(stdin); 
 
@@ -170,51 +158,9 @@ void atExit()
     }
 }
 
-
-
-// SEM_ON function to set semaphores 
-//******************* SEM_ON function *************************************************************************************************
-int SEM_ON(int sem_id, int sem_val)
-{
-    union semun sem_union; 
-    sem_union.val = sem_val; 
-    return semctl(sem_id, 0, SETVAL, sem_union); 
-}
-
-// SEM_OFF function to unlink semaphores 
-// takes semaphore as a parameter 
-//******************* SEM_OFF function *************************************************************************************************
-int SEM_OFF(int sem_id)
-{
-    return semctl(sem_id, 0, IPC_RMID); 
-}
-
-// P function for waiting, decrements semaphore
-// takes semaphore as a parameter 
-//******************* P function *************************************************************************************************
-int P(int sem_id)
-{
-    struct sembuf sem_buf; 
-
-    sem_buf.sem_num = 0; 
-    sem_buf.sem_op = -1; 
-    sem_buf.sem_flg = SEM_UNDO; 
-    return semop(sem_id, &sem_buf, 1); 
-}
-
-// V function for waiting, increments sempahore 
-// takes semaphore as a parameter 
-//******************* V function *************************************************************************************************
-int V(int sem_id)
-{
-    struct sembuf sem_buf; 
-
-    sem_buf.sem_num = 0; 
-    sem_buf.sem_op = 1; 
-    sem_buf.sem_flg = SEM_UNDO; 
-    return semop(sem_id, &sem_buf, 1); 
-}
-
+/* getUserIn(char *userIn)
+  -> takens in input from main and appends string ends 
+*/
 //******************* GETUSERIN function *************************************************************************************************
 void getUserIn(char *userIn)
 {
@@ -226,26 +172,15 @@ void getUserIn(char *userIn)
         userIn[len] = '\0';
 }
 
+/* treeCommand()
+    -> creates two processes 
+    -> process 1: creates Dir0 in current working directory 
+    -> pricess 2: changes current working directory to Dir0 and creates t1.txt, t2.txt, t3.txt and Dir1
+*/
 //******************* TREECOMMAND function *************************************************************************************************
 void treeCommand()
 {
     FILE *fp1, *fp2, *fp3;			/* File Pointers */
-//****************************************** SETTING SEMAPHORES 
-    sem1 = semget(KEY1, 1, IPC_CREAT | 0666); 
-    if(sem1 < 0)
-    {
-        perror("ERROR: semget sem1\n"); 
-        exit(EXIT_FAILURE); 
-    }
-    sem2 = semget(KEY2, 1, IPC_CREAT | 0666); 
-    if(sem2 < 0)
-    {
-        perror("ERROR: segmet sem2\n");
-        exit(EXIT_FAILURE); 
-    }
-   
-	SEM_ON(sem1,1); 		//INITIALIZING SEMAPHORES 
-    SEM_ON(sem2,0);  
 
     int status; 
     pid_t pid;
@@ -259,21 +194,17 @@ void treeCommand()
 	}
 
 	if (pid == 0)
-	{   //==================================================== CHILD 1 PROCESS
-                
-        //printf("1 PPID: %d, PID: %d\n", getppid(), getpid()); 
-        P(sem1); 
-        printf("Two\n");
-            
+	{   //==================================================== CHILD 1 PROCESS: create Dir0 in current working directory       
+        //printf("1 PPID: %d, PID: %d\n", getppid(), getpid());  //for testing
+        //printf("one\n");
+        printf("Creating tree in current directory...\n"); 
         char* prog1[] = { "mkdir", "Dir0", 0};
         ret = execvp(prog1[0], prog1);    // executing ls -F 
         if(ret == -1)
         {
             perror("exec error prog 1"); 
             exit(0); 
-        }
-        V(sem2); 
-        exit(0);                                            
+        }                              
 		//==================================================== END CHILD 1 PROCESS 
 	}
     else
@@ -286,37 +217,11 @@ void treeCommand()
 			exit(1);
 		}
 		if (pid == 0)
-		{  //==================================================== CHILD 2 PROCESS 
+		{  //==================================================== CHILD 2 PROCESS: create 3 text files and Dir1
             //printf("2 PPID: %d, PID: %d\n", getppid(), getpid());
-            P(sem2); 
-            printf("Three\n"); 
-                
-            char cwd[PATH_MAX];
-            if (getcwd(cwd, sizeof(cwd)) != NULL) 
-            {
-                printf("Current working dir: %s\n", cwd);
-            } 
-            else 
-            {
-                perror("getcwd() error");
-                exit(0); 
-            }
-            strcat(cwd, "/Dir0"); 
-        
-            if (chdir(cwd) != 0)  
-                perror("chdir() to /Dir0 failed"); 
-
-            char a[PATH_MAX];
-            if (getcwd(a, sizeof(a)) != NULL) 
-            {
-                printf("Current working dir: %s\n", a);
-            } 
-            else 
-            {
-                perror("getcwd() error");
-                exit(0); 
-            }
-
+            sleep(2); 
+            //printf("two\n"); 
+            changeDirectory(); 
             fp1 = fopen("t1.txt","w");                                            
 	        fclose(fp1);
 	                       
@@ -333,23 +238,159 @@ void treeCommand()
                 perror("exec error prog 2"); 
                 exit(0); 
             }
-
-     
-            V(sem1); 
-            exit(0);   //==================================================== END CHILD 2 PROCESS                
+            //==================================================== END CHILD 2 PROCESS                
 		}
 		else
 		{
 				//Now parent process waits for the child processes to finish
 			pid = wait(&status);
-			printf("Process(pid = %d) exited with the status %d. \n", pid, status);
-				
-			SEM_OFF(sem2); //********* turn off semaphore 
-				
+			//printf("Process(pid = %d) exited with the status %d. \n", pid, status);   //for testing 
+					
 			pid = wait(&status);
-			printf("Process(pid = %d) exited with the status %d. \n", pid, status);
-			     
-			SEM_OFF(sem1);	//********** turn off semaphore 
+			//printf("Process(pid = %d) exited with the status %d. \n", pid, status);   //for testing 
 		}   		
 	}
+}
+
+/* listCommands()
+    -> creates two processes 
+    -> Process 1: changes directory to Dir0, clears screen, executes ls -l commands to t1.txt via redirecting the stadout using pipes 
+    -> Process 2: renames t1.txt to tree.txt and executers ls -l to shell. 
+*/
+void listCommand()
+{
+    int status; 
+    pid_t pid;
+    int ret; 
+    int pipefds[2]; // creating pipe 
+    int filefd;
+    
+    if(pipe(pipefds) < 0){  // error handling for pipe 
+
+        perror("pipe error"); 
+        exit(1); 
+    }
+
+	if ((pid = fork()) == -1)
+	{
+			//Fork failed!
+		perror("fork");
+		exit(1);
+	}
+
+	if (pid == 0)
+	{   //==================================================== CHILD 1 PROCESS: clear screen, write ls command to t1.txt             
+        //printf("1 PPID: %d, PID: %d\n", getppid(), getpid()); 
+        //printf("One\n"); 
+        system("clear"); 
+        printf("Creating list, writing to t1.txt and renaming file to tree.txt...\n\n"); 
+        changeDirectory(); 
+       
+        filefd = open("t1.txt", O_RDWR); 
+        close(1); 
+        dup(filefd); 
+        char* prog1[] = { "ls", "-l",0};
+        ret = execvp(prog1[0], prog1);                          // executing ls -F 
+
+        if(ret == -1)
+        {
+            perror("exec error prog 1"); 
+            exit(0); 
+        }
+    }
+	//==================================================== END CHILD 1 PROCESS 
+    else
+	{
+		//Parent Process. Fork off one more child process.
+		if ((pid = fork()) == -1) 
+		{
+				//fork failed!
+			perror("fork");
+			exit(1);
+		}
+		if (pid == 0)
+		{  //==================================================== CHILD 2 PROCESS: Rename t1.txt to tree.txt and print ls to terminal 
+            //printf("2 PPID: %d, PID: %d\n", getppid(), getpid());
+            sleep(2); 
+            close(filefd);
+            //printf("two\n"); 
+
+            changeDirectory(); 
+            int ret = rename("t1.txt", "tree.txt"); 
+            if(ret == -1)
+            {
+                perror("rename error\n"); 
+                exit(EXIT_FAILURE); 
+            }
+            
+            char* prog1[] = { "ls", "-l",0};
+            ret = execvp(prog1[0], prog1);                          // executing ls -F 
+            if(ret == -1)
+            {
+                perror("exec error prog 1"); 
+                exit(0); 
+            }
+ //==================================================== END CHILD 2 PROCESS                
+		}
+		else
+		{ 
+				//Now parent process waits for the child processes to finish
+			pid = wait(&status);
+			//printf("Process(pid = %d) exited with the status %d. \n", pid, status);   //for testing
+				
+			pid = wait(&status);
+			//printf("Process(pid = %d) exited with the status %d. \n", pid, status);	  //for testing    
+		}   		
+	}
+}
+
+/* changeDirectory()
+  -> get current directoy, append Dir0/ and change to new appeneded directory 
+*/
+void changeDirectory()
+{
+    char cwd[PATH_MAX];
+     
+    if (getcwd(cwd, sizeof(cwd)) != NULL) 
+    {
+        //printf("Current working dir: %s\n", cwd);  // for testing 
+    } 
+    else 
+    {
+        perror("getcwd() error");
+        exit(0); 
+    }
+
+    strcat(cwd, "/Dir0");   // append /Dir0
+        
+    if (chdir(cwd) != 0)                //change directory 
+        perror("chdir() to /Dir0 failed"); 
+
+    char a[PATH_MAX];
+    if (getcwd(a, sizeof(a)) != NULL) 
+    {
+        //printf("Current working dir: %s\n", a);   //for testing 
+    } 
+    else 
+    {
+        perror("getcwd() error");
+        exit(0); 
+    }
+}
+
+/* getCurrentDirectory()
+  -> gets current directory 
+*/
+void getCurrentDirectory()
+{
+    char cwd[PATH_MAX]; 
+    if (getcwd(cwd, sizeof(cwd)) != NULL) 
+    {
+        //printf("Current working dir: %s\n", cwd); //for testing 
+    } 
+    else 
+    {
+        perror("getcwd() error");
+        exit(0); 
+    }
 }
